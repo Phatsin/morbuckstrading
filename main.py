@@ -60,7 +60,7 @@ def force_https():
   #return 'This page is maintenance.'
   #pass
   if request.endpoint in app.view_functions and not request.is_secure:
-  Commit  return redirect(request.url.replace('http://', 'https://'))
+    return redirect(request.url.replace('http://', 'https://'))
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
