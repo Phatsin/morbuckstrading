@@ -22,6 +22,8 @@ import config
 '''
 config.py
 
+csrf_sc = b''
+
 liquid_id = ''
 liquid_sc = ''
 
@@ -36,7 +38,7 @@ app = Flask(__name__,
   static_url_path='',
   static_folder='static',
   template_folder='templates')
-app.config['SECRET_KEY'] = b'257ad80821c880eb91d17c905255ae17300744d1266344e3'
+app.config['SECRET_KEY'] = config.csrf_sc
 #app.config['WTF_CSRF_TIME_LIMIT'] = 30
 
 Mobility(app)
@@ -141,10 +143,10 @@ def bitkub_token():
   #payload_ = json.dumps(payload, separators=(',', ':'), sort_keys=True)
   payload_ = json.dumps(payload)
 
-  signature = hmac.new(bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
+  signature = hmac.new(config.bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
 
   payload['sig'] = signature
-  headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': bitkub_ky}
+  headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': config.bitkub_ky}
   res = requests.post(url, json=payload, headers=headers)
   data_ = json.loads(res.text)
   return data_
@@ -453,9 +455,9 @@ def liquidteam_trans():
     auth_payload = {
       'path': path,
       'nonce': now,
-      'token_id': liquid_id
+      'token_id': config.liquid_id
     }
-    signature = jwt.encode(auth_payload, liquid_sc, algorithm='HS256')
+    signature = jwt.encode(auth_payload, config.liquid_sc, algorithm='HS256')
 
     headers = {
       'content-type' : 'application/json',
@@ -772,10 +774,10 @@ def clubfeedxrp_hand_trans():
 
     payload_ = json.dumps(payload)
 
-    signature = hmac.new(bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
+    signature = hmac.new(config.bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
 
     payload['sig'] = signature
-    headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': bitkub_ky}
+    headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': config.bitkub_ky}
 
     url = 'https://api.bitkub.com/api/market/my-order-history'
     res = requests.post(url, json=payload, headers=headers)
@@ -851,10 +853,10 @@ def clubfeedxrp_hand_trade():
 
     payload_ = json.dumps(payload)
 
-    signature = hmac.new(bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
+    signature = hmac.new(config.bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
 
     payload['sig'] = signature
-    headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': bitkub_ky}
+    headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': config.bitkub_ky}
     
     ent_ = blt_data.get().to_dict().get(request.json['bullet'])['ent']
     
@@ -952,10 +954,10 @@ def clubfeedxrp_hand_trade():
 
     payload_ = json.dumps(payload)
 
-    signature = hmac.new(bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
+    signature = hmac.new(config.bitkub_sc.encode(), payload_.encode(), digestmod=hashlib.sha256).hexdigest()
 
     payload['sig'] = signature
-    headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': bitkub_ky}
+    headers = {'accept': 'application/json', 'content-type': 'application/json', 'x-btk-apikey': config.bitkub_ky}
 
     ent_ = blt_data.get().to_dict().get(request.json['bullet'])['ent']
 

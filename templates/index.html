@@ -287,28 +287,39 @@ var under=0;
 <body>
   <div class = "main">
     <div class = "_head">
-      {{ title }}
-      {{ mbr_email }}
-      {% if mbr_data == None %}
-        Guest
-      {% else %}
-        {% if mbr_data['ident'] == 1 %}
-          Demo Trader
-        {% elif mbr_data['ident'] == 4 %}
-          Trader
+
+      <div style = "float: left">
+        <img src = "img/morbucks.png" />
+      </div>
+
+      <div style = "float: left">
+
+        {{ title }}
+        {{ mbr_email }}
+        {% if mbr_data == None %}
+          Guest
         {% else %}
-          {{ mbr_data['ident'] }}
+          {% if mbr_data['ident'] == 1 %}
+            Demo Trader
+          {% elif mbr_data['ident'] == 4 %}
+            Trader
+          {% else %}
+            {{ mbr_data['ident'] }}
+          {% endif %}
         {% endif %}
-      {% endif %}
-      <button onclick="sign();" id="sign">Sign ...</button>
-      </br>
-      <button onclick="window.location.href = '/';">Home</button>
-      Trading
-      <span id = "trade_list">
-      {% for value in mbr_data['trading'] %}
-      <button id = '{{ value }}' onclick="window.location.href = '/{{ value }}';">{{ value }}</button>
-      {% endfor %}
-      </span>
+        <button onclick="sign();" id="sign">Sign ...</button>
+        </br>
+        <button onclick="window.location.href = '/';">Home</button>
+        Trading
+        <span id = "trade_list">
+        {% for value in mbr_data['trading'] %}
+        <button id = '{{ value }}' onclick="window.location.href = '/{{ value }}';">{{ value }}</button>
+        {% endfor %}
+        </span>
+
+
+      </div>
+
 
     </div>
     {% if dinamic == '' %}
