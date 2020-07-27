@@ -38,3 +38,6 @@ __pycache__
 .vscode
 config.py
 serviceAccountKey.json
+
+# JetBrain
+.idea/
