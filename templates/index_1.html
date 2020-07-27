@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <link type="text/css" rel="stylesheet" href="/css/style.css?v=beta01_3" />
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-auth.js"></script>
+  <script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+  <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-analytics.js"></script>
+  <script type="text/javascript" src="/js/firebaseconfig.js"></script>
+  <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://mottie.github.io/tablesorter/css/theme.bootstrap_4.css" />
+  <script src="https://mottie.github.io/tablesorter/js/jquery.tablesorter.js"></script>
+  <script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js"></script>
+  <script src="/js/chat.js"></script>
+
+  <script type = "text/javascript">
+    var headers= {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token() }}"
+      }
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
+    var data = null;
+    var anonymousUser = firebase.auth().currentUser;
+
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        // User is signed in.
+        //var displayName = user.displayName;
+        var email = user.email;
+        chat_("{{dinamic}}", email);
+        //var emailVerified = user.emailVerified;
+        //var photoURL = user.photoURL;
+        //var isAnonymous = user.isAnonymous;
+        //var uid = user.uid;
+        //var providerData = user.providerData;
+        // ...
+        document.getElementById("sign").innerHTML = "Sign out";
+      } else {
+        document.getElementById("sign").innerHTML = "Sign in";
+        // User is signed out.
+        // ...
+      }
+    });
+    (function (){
+      sign = function() {
+        fetch('/sign', {
+          method: "POST",
+          headers: headers,
+          credentials: 'same-origin'
+        })
+        .then((response) => response.json())
+        .then((data) => {
+
+          switch (data['status']) {
+            case 'signout':
+              firebase.auth().signOut();
+              window.location.href = "/signin"; 
+              break;
+            case 'signin':
+              window.location.href = "/signin"; 
+              break;
+
+            default:
+              break;
+          }
+          console.log('Success:', data);
+          firebase.auth().signOut();
+          window.location.href = "/signin";           
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+        });
+      }
+
+    })();
+var over=0;
+var under=0;
+    $(document).ready(function() {
+
+      var audio=new Audio('/sound/beep.mp3');
+
+      beep = function (bl){
+      if($('#alert_val').prop('checked'))audio.play();
+      if(bl)$(bl).css('background-color','#F00');
+      setTimeout(
+        function(){
+          if(bl)$(bl).css('background-color','');
+        },1000);};
+
+      $("input[name='number']").keyup(function(event) {
+          $(this).css('background-color','#FFF');
+          var regexp = (/[^0-9\.]|^\.+(?!$)|^0+(?=[0-9]+)|\.(?=\.|.+\.)/g);
+          if (regexp.test(this.value)) {
+              this.value = this.value.replace(regexp, '');
+          }
+          var keycode=(event.keyCode?event.keyCode:event.which);
+          if (keycode=="13") {
+            switch (this.id) {
+              case "val_over":
+                over = this.value;
+                break;
+              case "val_under":
+                under = this.value;
+                break;
+              default:
+                break;
+            }
+            $(this).css('background-color','#FF7400');
+          }
+      });
+
+      $('#alert_val').change(function(){
+        if($('#alert_val').prop('checked')){
+          audio.play()
+          $('#price_alert').css('background-color','#FF7400');
+        }else{
+        $('#price_alert').css('background-color','#555')}
+      
+      });
+
+      function showIt(){
+        if(over&&bid>over)beep("#span_over");
+        if(under&&bid<under)beep("#span_under");
+        setTimeout(showIt,2000);
+      }
+
+      showIt();
+
+
+    });
+
+
+  </script>
+</head>
+<body>
+  <div style = "width: 1540px; height: 0px">.</div>
+  <div class = "_head">
+    {{ title }}
+    {{ mbr_email }}
+    {% if mbr_data == None %}
+      Guest
+    {% endif %}
+    {% if mbr_data['ident'] == 4 %}
+      Trader
+    {% else %}
+      {{ mbr_data['ident'] }}
+    {% endif %}
+    <button onclick="sign();" id="sign">Sign ...</button>
+  </br>
+    <button onclick="window.location.href = '/';">Home</button>
+    Trading
+
+    {% for value in mbr_data['trading'] %}
+    <button onclick="window.location.href = '/{{ value }}';">{{ value }}</button>
+    {% endfor %}
+
+  </div>
+  <div>
+  <!-- Dinamic page liquidteam -->
+    {% if dinamic == 'LiquidTeam' %}
+
+    <script>
+      var bid, offer;
+
+      function liquid_websocket() {
+        var socket = new WebSocket("wss://tap.liquid.com/app/LiquidTapClient");
+        
+        socket.onerror = function (event) {
+          console.log(new Date());
+          console.log('WS Error.');
+          setTimeout(function() {
+            liquid_websocket();
+          }, 1000);
+        };
+
+        socket.onclose = function (event) {
+          console.log(new Date());
+          console.log('WS Closed.');
+          setTimeout(function() {
+            liquid_websocket();
+          }, 1000);
+        };
+
+        socket.onopen = function (event) {
+          console.log(new Date());
+          console.log('WS Connected.');
+          socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_sell"}}));
+          socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_buy"}}));
+          //socket.send("Here's some text that the server is urgently awaiting!"); 
+        };
+        socket.onmessage = function (event) {
+          const wsdata = JSON.parse(event.data);
+          switch (wsdata.event) {
+            case "pusher:connection_established":
+
+              break;
+            case "pusher_internal:subscription_succeeded":
+              
+              break;
+            case "updated":
+        
+              switch (wsdata.channel) {
+                case "price_ladders_cash_xrpjpy_sell":
+        
+                price_data = JSON.parse(wsdata.data);
+        
+                $("#sell_side").html("");
+                  offer = price_data[0][0];
+                  for (const index in price_data.slice(0, 5)) {
+                    $("#sell_side").prepend(price_data[index][0]+" : "+price_data[index][1]+"</br>"); 
+                  }
+                  break;
+                case "price_ladders_cash_xrpjpy_buy":
+
+                price_data = JSON.parse(wsdata.data);
+        
+                $("#buy_side").html("");
+                  bid = price_data[0][0];
+                  window.document.title = '¥' + parseFloat(bid).toFixed(3) + " Morbucks Trading Platform BETA01.";
+                  for (const index in price_data.slice(-5, price_data.lenght)) {
+                    $("#buy_side").append(price_data[index][0]+" : "+price_data[index][1]+"</br>"); 
+                  }
+
+                  break;
+        
+                default:
+                  break;
+              }
+
+              break;
+            default:
+              break;
+          }
+        
+          //console.log(wsEvent.event);
+        
+        };
+
+      }
+      liquid_websocket();
+
+      (function (){
+        liquidteam = function (bullet, side) {
+          var status = document.getElementById("status_"+bullet).innerText;
+          var sold = parseFloat(document.getElementById("sell_price_"+bullet).innerText);
+          if (sold == "") sold = 0.0;
+
+          switch (side) {
+            case "sell":
+              if (status == "Sold") {
+                document.getElementById("msg").innerHTML = "Bullet is Sold.";
+                return;
+              }
+              if (bid < sold) {
+                if (!confirm("Bid is less than Sold price: "+parseFloat(sold-bid).toFixed(2))) {
+                  return;
+                }                 
+              }
+              break;
+            case "buy":
+            if (status == "Bought") {
+                document.getElementById("msg").innerHTML = "Bullet is Bought.";
+                return;
+              }
+              if (offer > sold) {
+                if (!confirm("Offer is more than Sold price: "+parseFloat(offer-sold).toFixed(2))) {
+                  return;
+                }                 
+              }
+              break;
+            default:
+              break;
+          }
+
+          document.getElementById("msg").innerHTML = "Waiting";
+          body = JSON.stringify({
+              bullet: bullet,
+              side: side,
+              comment: document.getElementById('comment_'+bullet).value
+          });
+          fetch('/liquidteam_trade', {
+            method: "POST",
+            headers: headers,
+            body: body,
+            credentials: 'same-origin'
+          })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.message == 'tradesuccess') {
+              document.getElementById("msg").innerHTML = "Completed";
+              switch (data.data.side) {
+                case "sell":
+                  status = "Sold";
+                  document.getElementById("sell_button_"+bullet).disabled = true;                   
+                  document.getElementById("buy_button_"+bullet).disabled = false;
+
+                  break;
+                case "buy":
+                  status = "Bought";
+                  document.getElementById("sell_button_"+bullet).disabled = false;                   
+                  document.getElementById("buy_button_"+bullet).disabled = true; 
+                  break;
+                default:
+                  break;
+              }
+              
+              document.getElementById("status_"+bullet).innerHTML = status;
+              document.getElementById(data.data.side+"_price_"+bullet).innerHTML = data.data.price;
+              var datetime = new Date(data.data.created_at * 1000).toUTCString();
+              date = datetime.slice(0, -13);
+              time = datetime.slice(-12, datetime.length);
+              document.getElementById(data.data.side+"_time_"+bullet).innerHTML = date+"<br/>"+time;
+
+              if (data.cf) {
+                document.getElementById("cf").innerHTML = data.cf;
+              }
+
+              $("#bullets_table").trigger('update');
+
+            }else{
+              console.log(data.message);
+              document.getElementById("msg").innerHTML = data.message;
+
+            }
+            ;
+          })
+          .catch((error) => {
+            console.log("Error");
+            document.getElementById("msg").innerHTML = "Connection error please reload page.";
+            //console.error('Error:', error);
+          });
+        }
+      }());
+
+      $(document).ready(function() {
+        var x = document.getElementsByName("time_td");
+
+        for (var i = 0; i < x.length; i++) {
+          if (document.getElementsByName("time_td")[i].getAttribute("data") != "") {
+            var datetime = new Date(document.getElementsByName("time_td")[i].getAttribute("data") * 1000).toUTCString();
+            
+            date = datetime.slice(0, -13);
+            time = datetime.slice(-12, datetime.length);
+            
+            document.getElementsByName("time_td")[i].innerHTML = date+"<br/>"+time;
+          }
+        }
+
+        var x = document.getElementsByName("status_td");
+
+        for (var i = 0; i < x.length; i++) {
+          var bullet = document.getElementsByName("status_td")[i].id.replace("status_", "");
+          switch (document.getElementsByName("status_td")[i].innerText) {
+            case "Sold":
+              document.getElementById("sell_button_"+bullet).disabled = true;
+              break;
+            case "Bought":
+              document.getElementById("buy_button_"+bullet).disabled = true;
+              break;
+
+            default:
+              break;
+          }
+        }
+
+        setInterval(function(){ 
+          fetch('/__csrf', {
+            method: "POST",
+            headers: headers,
+            credentials: 'same-origin'
+          })
+          .then((response) => response.json())
+          .then((data) => {
+            headers= {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "X-CSRFToken": data.csrf
+            }
+            console.log(new Date());
+            console.log("Update CSRF Token.");
+            console.log(data.csrf);
+          })
+          .catch((error) => {
+            console.log(new Date());
+            console.log("Update CSRF Error.")
+          });
+        }, 1800000);
+
+      });
+
+      $(function() {
+        $.tablesorter.addParser({
+          id: 'date',
+          is: function(s, table, cell, $cell) {
+            return false;
+          },
+          format: function(s, table, cell, cellIndex) {
+            if (cellIndex === 2 || cellIndex === 4) {
+              return $(cell).attr('data');
+            }
+            //return s;
+          },
+          parsed: false,
+          type: 'numeric'
+        });
+        $.tablesorter.addParser({
+          id: 'value',
+          is: function(s, table, cell, $cell) {
+            return false;
+          },
+          format: function(s, table, cell, cellIndex) {
+            if (cellIndex === 6) {
+              return $(cell).children().val();
+            }
+            return s;
+          },
+          parsed: false,
+          type: 'text'
+        });
+        $("#bullets_table thead th:eq(7), th:eq(8)").data("sorter", false);
+        $('#bullets_table').tablesorter({
+          emptyTo: 'bottom',
+          theme : 'bootstrap',
+          headers: {
+            2 : { sorter: 'date' },
+            4 : { sorter: 'date' },
+            6 : { sorter: 'value' }
+          },
+        });
+      });
+
+    </script>
+
+    <div class = "msg">
+      Message: LiquidTeam
+    {% if trd_data['ident'] == 4 %}
+      Trader
+    {% else %}
+      {{ trd_data['ident'] }}
+    {% endif %}
+      <div id = "msg">
+        Wellcome to Morbucks Trading Club Platform BETA 01.
+      </div>
+    </div>
+    <div class = "info">
+      Cash flow: <span id = "cf">{{ trd_data['cashflow'] }}</span> JPY
+    </div>
+    <div id = "price_alert" class = "price_alert">
+      Price alert:
+      <input type="checkbox" id="alert_val" autocomplete="off" /> Sound<br/>
+      <span id = "span_over">Over: </span><input type="text" id="val_over"  name = "number"/><br/>
+      <span id = "span_under">Under: </span><input type="text" id="val_under"  name = "number"/>
+    </div>
+    <div class = "book">
+      XRPJPY</br>
+      Offer
+      <div id = "sell_side" class = "sellside"></div>
+      Bid
+      <div id = "buy_side" class = "buyside"></div>
+    </div>
+    <div class = "chat">
+      Chat: <span>{{dinamic}}</span>
+      <div class = "chat_box" id = "chat_messages"></div>
+      <input type = "text" id = "messageInput" placeholder="Type a message..."/>
+    </div>
+    <div class = "members_on">Members Online:
+      <div id = "member_on"></div>
+    </div>
+    {% if trd_data['ident'] > 5 %}
+    <script>
+      (function() {
+        add_member = function() {
+          document.getElementById('msg_add_member').innerHTML = 'Waiting';
+          body = JSON.stringify({
+            ident: parseInt(document.getElementById('ident').value),
+            email: document.getElementById('member_email_add').value,
+            bullet: parseInt(document.getElementById('bullets_assign').value),
+            trade: 'liquidteam'
+          });
+          fetch('/add_member', {
+            method: "POST",
+            headers: headers,
+            body: body,
+            credentials: 'same-origin'
+          })
+          .then((response) => response.json())
+          .then((data) => {
+            switch (data.message) {
+              case 'success':
+                document.getElementById('msg_add_member').innerHTML = 'Success';
+                break;
+              case 'error':
+                document.getElementById('msg_add_member').innerHTML = 'Error';
+                break;
+              case 'exist':
+                document.getElementById('msg_add_member').innerHTML = 'Exist';
+                break;
+              default:
+                break;
+            }
+
+
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+          });
+        }
+
+        transaction = function () {
+          document.getElementById('msg_transaction').innerHTML = 'Waiting';
+          body = JSON.stringify({
+            _id: document.getElementById('_id').value,
+          });
+          fetch('/liquidteam_trans', {
+            method: "POST",
+            headers: headers,
+            body: body,
+            credentials: 'same-origin'
+          })
+          .then((response) => response.json())
+          .then((data) => {
+
+            document.getElementById('msg_transaction').innerHTML = data.message;
+
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+          });
+
+        }
+
+
+
+      }());
+
+    </script>
+    <br/><br/><br/><br/>
+    <div class = "admin">
+      Admin<br/>
+      Add member<br/>
+      Ident<input type = "text" id = "ident"/>
+      Email<input type = "text" id = "member_email_add"/>
+      Number of bullet<input type = "text" id = "bullets_assign"/>
+      <button onclick = "add_member();">Add</button><span id = "msg_add_member"></span>
+      <hr/>
+      Transaction<br/>
+      ID<input type = "text" id = "_id"/>
+      <button onclick = "transaction();">Get</button><span id = "msg_transaction"></span>
+
+    </div>
+  {% endif %}
+
+
+    <div class = "bullets">
+      <table class = "table_bullets" id = "bullets_table">
+        <thead>
+          <tr>
+            <th>
+              Bullet
+            </th>
+            <th>
+              Sold price
+            </th>
+            <th>
+              Sold time
+            </th>
+            <th>
+              Bought price
+            </th>
+            <th>
+              Bought time
+            </th>
+            <th>
+              Status
+            </th>
+            <th>
+              Comment
+            </th>
+            <th>
+              Sell
+            </th>
+            <th>
+              Buy
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+      {% for key, value in trading.items() %}
+          <tr>
+            <td>
+              {{ key }}
+            </td>
+            <td id = "sell_price_{{ key }}">
+              {%- if 'sell' in value and 'price' in value['sell'] -%}
+              {{ value['sell']['price'] }}
+              {%- endif -%}
+            </td>
+            <td id = "sell_time_{{ key }}" name = "time_td" data = "
+            {%- if 'sell' in value and 'time' in value['sell'] -%}
+            {{ value['sell']['time'] }}
+            {%- endif -%}
+            ">
+            </td>
+            <td id = "buy_price_{{ key }}">
+              {%- if 'buy' in value and 'price' in value['buy'] -%}
+              {{ value['buy']['price'] }}
+              {%- endif -%}
+            </td>
+            <td id = "buy_time_{{ key }}" name = 'time_td' data = "
+              {%- if 'buy' in value and 'time' in value['buy'] -%}
+              {{ value['buy']['time'] }}
+              {%- endif -%}            
+            ">
+            </td>
+            <td id = "status_{{ key }}" name = "status_td">
+              {%- if 'status' in value -%}
+              {{ value['status'] }}
+              {%- endif -%}
+            </td>
+            <td width = "20px">
+              <input type = "text" id = "comment_{{ key }}" value = "
+              {%- if 'comment' in value -%}
+              {{ value['comment'] }}
+              {%- endif -%}  
+              " autocomplete="off"/>
+            </td>
+            <td width = "20px">
+              <button id = "sell_button_{{ key }}" onclick = "liquidteam('{{ key }}', 'sell');">Sell</button>
+            </td>
+            <td width = "20px">
+              <button id = "buy_button_{{ key }}" onclick = "liquidteam('{{ key }}', 'buy');">Buy</button>
+            </td>   
+          </tr>
+      {% endfor %}    
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+  <!-- Dinamic page liquidteam -->
+  </div>
+</body>
+</html>

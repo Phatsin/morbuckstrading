@@ -1,0 +1,259 @@
+:root {
+  --bg-color: #70DB75;
+  --border: 1px solid black;
+  --border-radius: 2px;
+  --color: black;
+  --font-small: 14px;
+  --font-medium: 16px;
+  --div-width: 300px;
+  --div-width-list: 280px;
+  --div-padding: 6px 6px;
+}
+body {
+  margin: 0px;
+  padding: 0px;
+}
+._head {
+  height: 54px;
+  margin: 0px;
+  padding: 10px;
+  width: 940px;
+  background-color: #e7e7e7;
+}
+.main {
+  float: left
+}
+.msg {
+  width: 220px;
+  height: 100px;
+  background-color: #ffffff;
+  border: var(--border);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 0px 2px;
+  border-radius: var(--border-radius);
+}
+.msg div {
+  color: blue;
+}
+.info {
+  width: 220px;
+  height: 20px;
+  background-color: #ffffff;
+  border: var(--border);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 2px 2px;
+  border-radius: var(--border-radius);
+}
+.price_alert {
+  width: 220px;
+  height: 100px;
+  background-color: #ffffff;
+  border: var(--border);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 2px 2px;
+  border-radius: var(--border-radius);
+}
+.book {
+  width: 220px;
+  background-color: #ffffff;
+  border: var(--border);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 2px 2px;
+  border-radius: var(--border-radius);
+}
+.chat {
+  width: 255px;
+  background-color: #e7e7e7;
+  border: var(--border);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 2px 2px;
+  border-radius: var(--border-radius);
+}
+.chat_box {
+  width: 241px;
+  height: 400px;
+  background-color: #ffffff;
+  border: var(--border);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  border-radius: var(--border-radius);
+  overflow-y: scroll;
+}
+hr {
+  height:1px;
+  border-width:0;
+  color:gray;
+  background-color:gray
+}
+.members_on {
+  width: 255px;
+  background-color: #e7e7e7;
+  border: var(--border);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 2px 2px;
+  border-radius: var(--border-radius);
+}
+.table_bullets thead th {
+  position: -webkit-sticky;
+  position : sticky;
+  top : 0px;
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: inset 0px 1px 0px #000000,
+  inset 1px -1px 1px -1px #000000;
+  padding: 2px 0px;
+  background-clip: padding-box
+}
+.bullets {
+  width: 720px;
+  height: 700px;
+  overflow-y: scroll;
+  background-color: #ffffff;
+  padding: 0px 0px 0px 0px;
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 0px 0px 0px 0px;
+  border-radius: var(--border-radius);
+  float: left;
+  border-collapse: collapse;
+}
+.admin {
+  width: 692px;
+  background-color: #ffffff;
+  border: var(--border);
+  padding: 4px;
+  font-size: var(--font-small);
+  text-align: left;
+  text-decoration: none;
+  margin: 0px 0px 0px 0px;
+  border-radius: var(--border-radius);
+  border-collapse: collapse;
+}
+.sellside {
+color: #f00;
+}
+.buyside {
+color: #005200;
+}
+.table_bullets {
+  width: 688px;
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+td {
+  text-align: left;
+  font-weight: normal;
+  border: 1px solid black;
+  padding: 0px 2px;
+}
+th {
+  cursor : pointer;  
+  border: 1px solid black;
+  padding: 1px 1px;
+}
+.poke {
+  cursor : pointer;  
+}
+.broker {
+  width: 300px;
+  background-color: #ffcfa1;
+  border: var(--border);
+  color: var(--color);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: center;
+  text-decoration: none;
+  margin: 4px 2px;
+  border-radius: var(--border-radius);
+}
+.task {
+  width: 300px;
+  background-color: #6fd6ff;
+  border: var(--border);
+  color: var(--color);
+  padding: var(--div-padding);
+  font-size: var(--font-small);
+  text-align: center;
+  text-decoration: none;
+  margin: 4px 2px;
+  border-radius: var(--border-radius);
+}
+
+.comment_input {
+  background-color: #ffffff;
+  border: var(--border);
+  color: var(--color);
+  padding: 5px 5px;
+  margin: 4px 4px;
+  text-align: left;
+  text-decoration: none;
+  width: 190px;
+}
+
+.price_alert input[type=text] {
+  background-color: #ffffff;
+  border: var(--border);
+  color: var(--color);
+  padding: 5px 5px;
+  text-align: left;
+  text-decoration: none;
+  margin: 4px 2px;
+  width: 100px;
+}
+
+#messageInput {
+  background-color: #ffffff;
+  border: var(--border);
+  color: var(--color);
+  padding: 5px 5px;
+  margin: 4px 0px;
+  text-align: left;
+  text-decoration: none;
+  width: 243px;
+}
+
+.bot input[type=text] {
+  background-color: #ff7400;
+  border: var(--border);
+  color: var(--color);
+  padding: 5px 5px;
+  margin: 4px 4px;
+  text-align: left;
+  text-decoration: none;
+  width: 70px;
+}
+.price_alert span {
+  display: inline-block;
+  width: 50px;
+}
+.small_input {
+  background-color: #ffffff;
+  border: var(--border);
+  color: var(--color);
+  padding: 5px 5px;
+  text-align: left;
+  text-decoration: none;
+  margin: 4px 2px;
+  width: 20px;
+}

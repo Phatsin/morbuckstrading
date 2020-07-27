@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script>
+var socket = new WebSocket("wss://tap.liquid.com/app/LiquidTapClient");
+
+socket.onopen = function (event) {
+  socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_sell"}}));
+  socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_buy"}}));
+  //socket.send("Here's some text that the server is urgently awaiting!"); 
+};
+
+
+socket.onmessage = function (event) {
+
+
+  const wsdata = JSON.parse(event.data);
+
+  switch (wsdata.event) {
+    case "pusher:connection_established":
+      
+      break;
+    case "pusher_internal:subscription_succeeded":
+      
+      break;
+    case "updated":
+ 
+      switch (wsdata.channel) {
+        case "price_ladders_cash_xrpjpy_sell":
+
+        price_data = JSON.parse(wsdata.data);
+
+        $("#sell_side").html("");
+          for (const index in price_data.slice(0, 5)) {
+            $("#sell_side").prepend(price_data[index][0]+":"+price_data[index][1]+"</br>"); 
+          }
+
+
+          break;
+        case "price_ladders_cash_xrpjpy_buy":
+
+
+        price_data = JSON.parse(wsdata.data);
+
+        $("#buy_side").html("");
+          for (const index in price_data.slice(-5, price_data.lenght)) {
+            $("#buy_side").append(price_data[index][0]+":"+price_data[index][1]+"</br>"); 
+          }
+
+
+
+          break;
+
+        default:
+          break;
+      }
+
+
+
+      break;
+    default:
+      break;
+  }
+
+  //console.log(wsEvent.event);
+
+}
+
+
+  </script>
+</head>
+<body>
+
+  Sell side
+  <div id = "sell_side"></div>
+  Buy side
+  <div id = "buy_side"></div>
+
+</body>
+</html>

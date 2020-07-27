@@ -1,0 +1,2260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <link type="text/css" rel="stylesheet" href="/css/style.css?v=beta01_7" />
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-auth.js"></script>
+  <script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+  <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-analytics.js"></script>
+  <script type="text/javascript" src="/js/firebaseconfig.js"></script>
+  <script src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://mottie.github.io/tablesorter/css/theme.bootstrap_4.css" />
+  <script src="https://mottie.github.io/tablesorter/js/jquery.tablesorter.js"></script>
+  <script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js"></script>
+  <script type = "text/javascript">
+    var headers= {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token() }}"
+      }
+      function poking(id, poke) {
+        $('#poking').val(poke).trigger('change');
+        
+        $('#poke_'+id).css('background-color', '#F00');
+
+        setTimeout(
+          function(){
+            $('#poke_'+id).css('background-color','');
+          },2000);  
+      }
+
+      function chat_(room, email) {
+      // reference to firebase JSON tree
+        var messagesRef = new Firebase('https://morbuxdb-f99d2.firebaseio.com/chat/'+room+'/messages');
+        var pokesRef = new Firebase('https://morbuxdb-f99d2.firebaseio.com/chat/'+room+'/poke');
+        // cache DOM references
+        var messageField = $('#messageInput'),
+        messageList = $('#chat_messages'),
+        onlineList = $('#online-users'),
+        poking = $('#poking');
+      
+        // press event ENTER key
+        messageField.keypress(function (e) {
+          if (e.keyCode == 13) {
+
+            //register data to firebase
+            messagesRef.push({name:email, text:messageField.val(), time: Firebase.ServerValue.TIMESTAMP});
+            messageField.val('');
+          }
+        });
+
+        poking.change(function (e) {
+
+          if (email != poking.val()) {
+            pokesRef.push({name:email, poke:poking.val()});
+
+          }
+
+        });
+
+        // Add a callback that is triggered for each chat message.
+        messagesRef.limitToLast(10).on('child_added', function (snapshot) {
+          //get data
+          var data = snapshot.val();
+          var username = data.name || "anonymous";
+          var message = data.text;
+          var timestamp = data.time || 0;
+          var poke = data.poke;
+      
+          //only if username and message = true then display username,message
+          if (username && message) {
+
+            date_time = new Date(timestamp).toString();
+
+            //add message
+            messageList.append("<div id = '"+timestamp+"' title = '"+date_time+"'>"+username+"<br/>"+message+"</div><hr/>");
+        
+            //scroll to bottom in messages
+            messageList[0].scrollTop = messageList[0].scrollHeight;
+
+            if (email != username && document.getElementById("chat_sound").checked == true) {
+              chat_audio.play();          
+            }
+
+          }
+
+        });
+      
+
+        pokesRef.limitToLast(1).on('child_added', function (snapshot) {
+          //get data
+
+          var data = snapshot.val();
+          
+          pokesRef.remove();
+
+          var username = data.name || "anonymous";
+          var poke = data.poke;
+      
+          //only if username and message = true then display username,message
+          if (username && poke) {
+
+            if (email == poke) {
+              poke_audio.play();
+              $('#member_on div:contains("' + username + '")').css('background-color', '#F00');
+
+              setTimeout(
+                function(){
+                  $('#member_on div:contains("' + username + '")').css('background-color','');
+                },2000);            
+            }
+            
+          }
+
+        });
+
+
+        var listRef = new Firebase("https://morbuxdb-f99d2.firebaseio.com/chat/"+room+"/presence/");
+        var userRef = listRef.push();
+      
+        // Add ourselves to presence list when online
+        var presenceRef = new Firebase("https://morbuxdb-f99d2.firebaseio.com/.info/connected");
+        presenceRef.on("value", function(snap) {
+          if (snap.val()) {
+            userRef.set(email);
+            // Remove ourselves when we disconnect
+            userRef.onDisconnect().remove();
+          }
+        });
+      
+        // Number of online users is the number of objects in the presence list.
+        listRef.on("value", function(snap) {
+          //display number of online users in online-users
+          var obj_members = snap.val();
+          var members = "";
+          var i = 0;
+          for (k in obj_members) {
+            members += "<div id = \"poke_" + i + "\" class = 'poke' onclick = \'poking(\"" + i + "\", \"" + obj_members[k] +"\");\'>" + obj_members[k] + "</div>";
+          i++;
+          };
+          $("#member_on").html(members);
+
+        });
+    }
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
+    var data = null;
+    var alert_audio = new Audio('/sound/alert.mp3');
+    var chat_audio = new Audio('/sound/chat.mp3');
+    var poke_audio = new Audio('/sound/poke.mp3');
+    var anonymousUser = firebase.auth().currentUser;
+
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        // User is signed in.
+        //var displayName = user.displayName;
+        var email = user.email;
+        room_ = "{{dinamic}}";
+        if (room_ == "" || room_ == "DemoTrade") {
+          room_ = "Lobby";
+        }
+        chat_(room_, email);
+        //var emailVerified = user.emailVerified;
+        //var photoURL = user.photoURL;
+        //var isAnonymous = user.isAnonymous;
+        //var uid = user.uid;
+        //var providerData = user.providerData;
+        // ...
+        document.getElementById("sign").innerHTML = "Sign out";
+      } else {
+        document.getElementById("sign").innerHTML = "Sign in";
+        // User is signed out.
+        // ...
+      }
+    });
+    (function (){
+      sign = function() {
+        fetch('/sign', {
+          method: "POST",
+          headers: headers,
+          credentials: 'same-origin'
+        })
+        .then((response) => response.json())
+        .then((data) => {
+
+          switch (data['status']) {
+            case 'signout':
+              firebase.auth().signOut();
+              window.location.href = "/signin"; 
+              break;
+            case 'signin':
+              window.location.href = "/signin"; 
+              break;
+
+            default:
+              break;
+          }
+          console.log('Success:', data);
+          firebase.auth().signOut();
+          window.location.href = "/signin";           
+        })
+        .catch((error) => {
+          console.error('Error:', error);
+        });
+      }
+
+    })();
+var over=0;
+var under=0;
+    $(document).ready(function() {
+
+      beep = function (bl) {
+      if($('#alert_val').prop('checked'))alert_audio.play();
+      if(bl)$(bl).css('background-color','#F00');
+      setTimeout(
+        function(){
+          if(bl)$(bl).css('background-color','');
+        },1000);};
+
+      $("input[name='number']").keyup(function(event) {
+          $(this).css('background-color','#FFF');
+          var regexp = (/[^0-9\.]|^\.+(?!$)|^0+(?=[0-9]+)|\.(?=\.|.+\.)/g);
+          if (regexp.test(this.value)) {
+              this.value = this.value.replace(regexp, '');
+          }
+          var keycode=(event.keyCode?event.keyCode:event.which);
+          if (keycode=="13") {
+            switch (this.id) {
+              case "val_over":
+                over = this.value;
+                break;
+              case "val_under":
+                under = this.value;
+                break;
+              default:
+                break;
+            }
+            $(this).css('background-color','#FF7400');
+          }
+      });
+
+      $('#alert_val').change(function() {
+        if($('#alert_val').prop('checked')){
+          alert_audio.play()
+          $('#price_alert').css('background-color','#FF7400');
+        }else{
+        $('#price_alert').css('background-color','#555')}
+      
+      });
+      
+      $('#chat_sound').change(function() {
+        if($('#chat_sound').prop('checked')){
+          chat_audio.play()
+        }
+      });
+      function showIt() {
+        if(over&&bid>over)beep("#span_over");
+        if(under&&bid<under)beep("#span_under");
+        setTimeout(showIt,2000);
+      }
+
+      showIt();
+
+      $("input[name='pending']").keyup(function(event) {
+          $(this).css('background-color','#FFF');
+          var regexp = (/[^0-9\.]|^\.+(?!$)|^0+(?=[0-9]+)|\.(?=\.|.+\.)/g);
+          if (regexp.test(this.value)) {
+              this.value = this.value.replace(regexp, '');
+          }
+      });
+
+
+
+
+
+
+
+
+    });
+
+
+  </script>
+</head>
+<body>
+  <div class = "main">
+    <div class = "_head">
+      {{ title }}
+      {{ mbr_email }}
+      {% if mbr_data == None %}
+        Guest
+      {% else %}
+        {% if mbr_data['ident'] == 1 %}
+          Demo Trader
+        {% elif mbr_data['ident'] == 4 %}
+          Trader
+        {% else %}
+          {{ mbr_data['ident'] }}
+        {% endif %}
+      {% endif %}
+      <button onclick="sign();" id="sign">Sign ...</button>
+      </br>
+      <button onclick="window.location.href = '/';">Home</button>
+      Trading
+      <span id = "trade_list">
+      {% for value in mbr_data['trading'] %}
+      <button id = '{{ value }}' onclick="window.location.href = '/{{ value }}';">{{ value }}</button>
+      {% endfor %}
+      </span>
+
+    </div>
+    {% if dinamic == '' %}
+    <div class = "main"><div class = "main"></div><div class = "main">
+      <script>
+        (function() {
+          demo_port = function(desire) {
+            document.getElementById('msg_add_member').innerHTML = 'Waiting';
+            body = JSON.stringify({
+              trade: 'demotrade',
+              desire: desire
+            });
+            fetch('/add_member', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              switch (data.message) {
+                case 'success':
+                  document.getElementById('msg_add_member').innerHTML = 'Success';
+                  break;
+                case 'error':
+                  document.getElementById('msg_add_member').innerHTML = 'Error';
+                  break;
+                case 'exist':
+                  document.getElementById('msg_add_member').innerHTML = 'Exist';
+                  break;
+                case 'created':
+                  document.getElementById('msg_add_member').innerHTML = 'Created';
+                  html_ = '<button id = "DemoTrade" onclick="window.location.href = \'/DemoTrade\';">DemoTrade</button>'
+                  if ($('#DemoTrade').length == 0){
+                    $('#trade_list').append(html_);                    
+                  }
+                  break;
+                case 'removed':
+                  document.getElementById('msg_add_member').innerHTML = 'Removed';
+                  $('#DemoTrade').remove();
+                  break;
+
+
+                default:
+                  document.getElementById('msg_add_member').innerHTML = data.message;
+                  break;
+              }
+
+
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+            });
+          }
+
+
+
+
+
+        }());
+
+      </script>
+      <div class = "main">
+        <div class = "admin">
+          Demo Trading port.<br/>
+          <button onclick = "demo_port('create');">Create demo trading port</button>
+          <button onclick = "demo_port('remove');">Remove demo trading port</button>
+          <span id = "msg_add_member"></span>
+        </div>
+
+      </div>
+    
+
+    </div></div></div>
+
+
+
+  <div class = "main">
+
+    <div class = "chat">
+      Chat: <span>Lobby</span>
+      <div class = "chat_box" id = "chat_messages"></div>
+      <input type = "hidden" id = "poking"/>
+      <input type = "text" id = "messageInput" placeholder="Type a message..."/>
+      <input type = "checkbox" id = "chat_sound" autocomplete="off" />Sound
+    </div>
+    <div class = "members_on">Online members:
+      <div id = "member_on"></div>
+    </div>
+  </div>
+
+
+    {% endif %}
+    <!-- Dinamic page DemoTrade -->
+    {% if dinamic == 'DemoTrade' %}
+    <div>
+      <script>
+        var bid, offer;
+
+
+
+        function books_update(side, price_data, rat, amo) {
+
+
+          var t_ = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+          $("#time_update").html(t_)
+
+          switch (side) {
+            case "bid":
+
+              $("#buy_side").html("");
+              bid = price_data[0][rat];
+              window.document.title = "฿" + parseFloat(bid).toFixed(2) + " Morbucks Trading Platform BETA01.";
+              for (const index in price_data) {
+                $("#buy_side").append(price_data[index][rat]+" : "+price_data[index][amo]+"</br>"); 
+              }
+
+              break;
+            case "offer":
+
+              $("#sell_side").html("");
+              offer = price_data[0][rat];
+              for (const index in price_data) {
+                $("#sell_side").prepend(price_data[index][rat]+" : "+price_data[index][amo]+"</br>"); 
+              }
+
+              break;
+          
+            default:
+              break;
+          }
+
+
+          
+        }
+
+
+        function demo_websocket() {
+              
+
+
+          fetch("/bitkub_books", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({
+                query: "?sym=thb_xrp&lmt=5"
+            })
+          })
+          .then((response) => response.json())
+          .then((data) => {
+
+            books_update("bid", data.result.bids, 3, 4);
+            books_update("offer", data.result.asks, 3, 4);
+
+            var socket = new WebSocket("wss://api.bitkub.com/websocket-api/10");
+            
+            socket.onerror = function (event) {
+              console.log(new Date());
+              console.log("WS Error.");
+              setTimeout(function() {
+                demo_websocket();
+              }, 1000);
+            };
+
+            socket.onclose = function (event) {
+              console.log(new Date());
+              console.log("WS Closed.");
+              setTimeout(function() {
+                demo_websocket();
+              }, 1000);
+            };
+
+            socket.onopen = function (event) {
+              console.log(new Date());
+              console.log("WS Connected.");
+              //socket.send(JSON.stringify({"auth": data.result}));
+              //socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_buy"}}));
+              //socket.send("Here's some text that the server is urgently awaiting!"); 
+            };
+            socket.onmessage = function (event) {
+
+              try {
+                const wsdata = JSON.parse(event.data);
+                if (wsdata.event == "bidschanged" || wsdata.event == "askschanged" || wsdata.event == "tradeschanged") {
+
+                  switch (wsdata.event) {
+
+                    case "bidschanged":
+                      books_update("bid", wsdata.data.slice(0, 5), 1, 2)
+                      break;
+
+                    case "askschanged":
+                      books_update("offer", wsdata.data.slice(0, 5), 1, 2)
+                      break;
+
+                    case "tradeschanged":
+                      books_update("bid", wsdata.data[1].slice(0, 5), 1, 2)
+                      books_update("offer", wsdata.data[2].slice(0, 5), 1, 2)
+                      break;
+                  
+                    default:
+                      break;
+                  }
+                
+
+                }                
+              
+              
+              }
+              catch(err) {
+                //const wsdata = JSON.parse(event.data);
+                //console.log(event.data);
+              }
+
+            };
+
+
+          })
+          .catch((error) => {
+            console.log("Error");
+            document.getElementById("msg").innerHTML = "Connection error please reload page.";
+            //console.error('Error:', error);
+          });
+
+        }
+        demo_websocket();
+
+        (function (){
+          demotrade = function (bullet, side) {
+            var status = document.getElementById("status_"+bullet).innerText;
+            var sold = parseFloat(document.getElementById("sell_price_"+bullet).innerText);
+            var bought = parseFloat(document.getElementById("buy_price_"+bullet).innerText);
+            if (sold == "") sold = 0.0;
+
+            switch (side) {
+              case "sell":
+                if (bid < bought) {
+                  document.getElementById("msg").innerHTML = "Bid is less than Bought price.";
+                  return;
+                }
+                if (status == "Sold") {
+                  document.getElementById("msg").innerHTML = "Bullet is Sold.";
+                  return;
+                }
+                if (bid < sold) {
+                  if (!confirm("Bid is less than Sold price: "+parseFloat(sold-bid).toFixed(2))) {
+                    return;
+                  }                 
+                }
+                break;
+              case "buy":
+              if (status == "Bought") {
+                  document.getElementById("msg").innerHTML = "Bullet is Bought.";
+                  return;
+                }
+                if (offer > sold) {
+                  if (!confirm("Offer is more than Sold price: "+parseFloat(offer-sold).toFixed(2))) {
+                    return;
+                  }                 
+                }
+                break;
+              default:
+                break;
+            }
+
+            document.getElementById("msg").innerHTML = "Waiting";
+            body = JSON.stringify({
+                bullet: bullet,
+                side: side,
+                comment: document.getElementById('comment_'+bullet).value
+            });
+            fetch('/demo_trade', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.message == 'tradesuccess') {
+                document.getElementById("msg").innerHTML = "Completed";
+                switch (data.side) {
+                  case "sell":
+                    status = "Sold";
+                    document.getElementById("sell_button_"+bullet).disabled = true;                   
+                    document.getElementById("buy_button_"+bullet).disabled = false;
+
+                    break;
+                  case "buy":
+                    status = "Bought";
+                    document.getElementById("sell_button_"+bullet).disabled = false;                   
+                    document.getElementById("buy_button_"+bullet).disabled = true; 
+                    break;
+                  default:
+                    break;
+                }
+                
+                document.getElementById("status_"+bullet).innerHTML = status;
+                document.getElementById(data.side+"_price_"+bullet).innerHTML = data.data.result.rat;
+
+                if (data.cf) {
+                  document.getElementById("cf").innerHTML = data.cf;
+                }
+
+                $("#bullets_table").trigger('update');
+
+              }else{
+                console.log(data.message);
+                document.getElementById("msg").innerHTML = data.message;
+
+              }
+              ;
+            })
+            .catch((error) => {
+              console.log("Error");
+              document.getElementById("msg").innerHTML = "Connection error please reload page.";
+              //console.error('Error:', error);
+            });
+          }
+        }());
+
+        $(document).ready(function() {
+
+          var x = document.getElementsByName("status_td");
+
+          for (var i = 0; i < x.length; i++) {
+            var bullet = document.getElementsByName("status_td")[i].id.replace("status_", "");
+            switch (document.getElementsByName("status_td")[i].innerText) {
+              case "Sold":
+                document.getElementById("sell_button_"+bullet).disabled = true;
+                break;
+              case "Bought":
+                document.getElementById("buy_button_"+bullet).disabled = true;
+                break;
+
+              default:
+                break;
+            }
+          }
+
+          setInterval(function(){ 
+            fetch('/__csrf', {
+              method: "POST",
+              headers: headers,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              headers= {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-CSRFToken": data.csrf
+              }
+              console.log(new Date());
+              console.log("Update CSRF Token.");
+              console.log(data.csrf);
+            })
+            .catch((error) => {
+              console.log(new Date());
+              console.log("Update CSRF Error.")
+            });
+          }, 1800000);
+
+        });
+
+        $(function() {
+          $.tablesorter.addParser({
+            id: 'value',
+            is: function(s, table, cell, $cell) {
+              return false;
+            },
+            format: function(s, table, cell, cellIndex) {
+              if (cellIndex === 5 || cellIndex === 6) {
+                return $(cell).children().val();
+              }
+              return s;
+            },
+            parsed: false,
+            type: 'text'
+          });
+          $("#bullets_table thead th:eq(7), th:eq(8)").data("sorter", false);
+          $('#bullets_table').tablesorter({
+            emptyTo: 'bottom',
+            theme : 'bootstrap',
+            headers: {
+              5 : { sorter: 'value' },
+              6 : { sorter: 'value' }
+            },
+          });
+        });
+
+      </script>
+      <div class = "main">
+        <div class = "msg">
+          Message: {{dinamic}}
+        {% if trd_data['ident'] == 4 %}
+          Trader
+        {% else %}
+          {{ trd_data['ident'] }}
+        {% endif %}
+          <div id = "msg">
+            Wellcome to Morbucks Trading Club Platform BETA 01.
+          </div>
+        </div>
+        <div class = "info">
+          Cash flow: <span id = "cf">{{ trd_data['cashflow'] }}</span> THB
+        </div>
+        <div id = "price_alert" class = "price_alert">
+          Price alert:
+          <input type="checkbox" id="alert_val" autocomplete="off" /> Sound<br/>
+          <span id = "span_over">Over: </span><input type="text" id="val_over"  name = "number"/><br/>
+          <span id = "span_under">Under: </span><input type="text" id="val_under"  name = "number"/>
+        </div>
+        <div class = "book">
+          THB_XRP <span id = "time_update"></span></br>
+          Offer
+          <div id = "sell_side" class = "sellside"></div>
+          Bid
+          <div id = "buy_side" class = "buyside"></div>
+        </div>
+      </div>
+
+        <div class = "bullets">
+          <table class = "table_bullets" id = "bullets_table">
+            <thead>
+              <tr>
+                <th>
+                  Bullet
+                </th>
+                <th>
+                  Amount
+                </th>
+                <th>
+                  Sold price
+                </th>
+                <th>
+                  Bought price
+                </th>
+                <th>
+                  Status
+                </th>
+                <th>
+                  Comment
+                </th>
+                <th>
+                  Sell
+                </th>
+                <th>
+                  Buy
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+          {% for key, value in trading.items() %}
+              <tr>
+                <td>
+                  {{ key }}
+                </td>
+                <td>
+                  {%- if 'amount' in value -%}
+                  {{ value['amount'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "sell_price_{{ key }}">
+                  {%- if 'sell' in value -%}
+                  {{ value['sell'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "buy_price_{{ key }}">
+                  {%- if 'buy' in value -%}
+                  {{ value['buy'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "status_{{ key }}" name = "status_td">
+                  {%- if 'status' in value -%}
+                  {{ value['status'] }}
+                  {%- endif -%}
+                </td>
+                <td width = "20px">
+                  <input type = "text" class = "comment_input" id = "comment_{{ key }}" value = "
+                  {%- if 'comment' in value -%}
+                  {{ value['comment'] }}
+                  {%- endif -%}
+                  " autocomplete="off"/>
+                </td>
+                <td width = "20px">
+                  <button id = "sell_button_{{ key }}" onclick = "demotrade('{{ key }}', 'sell');">Sell</button>
+                </td>
+                <td width = "20px">
+                  <button id = "buy_button_{{ key }}" onclick = "demotrade('{{ key }}', 'buy');">Buy</button>
+                </td>   
+              </tr>
+          {% endfor %}    
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class = "main">
+    <div class = "chat">
+      Chat: <span>Lobby</span>
+      <div class = "chat_box" id = "chat_messages"></div>
+      <input type = "hidden" id = "poking"/>
+      <input type = "text" id = "messageInput" placeholder="Type a message..."/>
+      <input type = "checkbox" id = "chat_sound" autocomplete="off" />Sound
+    </div>
+    <div class = "members_on">Online members:
+      <div id = "member_on"></div>
+    </div>
+  </div>
+    {% endif %}
+    <!-- Dinamic page DemoTrade -->
+    <!-- Dinamic page liquidteam -->
+    {% if dinamic == 'LiquidTeam' %}
+    <div>
+      <script>
+        var bid, offer;
+
+        function liquid_websocket() {
+          var socket = new WebSocket("wss://tap.liquid.com/app/LiquidTapClient");
+          
+          socket.onerror = function (event) {
+            console.log(new Date());
+            console.log('WS Error.');
+            setTimeout(function() {
+              liquid_websocket();
+            }, 1000);
+          };
+
+          socket.onclose = function (event) {
+            console.log(new Date());
+            console.log('WS Closed.');
+            setTimeout(function() {
+              liquid_websocket();
+            }, 1000);
+          };
+
+          socket.onopen = function (event) {
+            console.log(new Date());
+            console.log('WS Connected.');
+            socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_sell"}}));
+            socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_buy"}}));
+            //socket.send("Here's some text that the server is urgently awaiting!"); 
+          };
+          socket.onmessage = function (event) {
+            
+            var t_ = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+            $("#time_update").html(t_)
+            
+            const wsdata = JSON.parse(event.data);
+            switch (wsdata.event) {
+              case "pusher:connection_established":
+
+                break;
+              case "pusher_internal:subscription_succeeded":
+                
+                break;
+              case "updated":
+          
+                switch (wsdata.channel) {
+                  case "price_ladders_cash_xrpjpy_sell":
+          
+                  price_data = JSON.parse(wsdata.data);
+          
+                  $("#sell_side").html("");
+                    offer = price_data[0][0];
+                    for (const index in price_data.slice(0, 5)) {
+                      $("#sell_side").prepend(price_data[index][0]+" : "+price_data[index][1]+"</br>"); 
+                    }
+                    break;
+                  case "price_ladders_cash_xrpjpy_buy":
+
+                  price_data = JSON.parse(wsdata.data);
+          
+                  $("#buy_side").html("");
+                    bid = price_data[0][0];
+                    window.document.title = '¥' + parseFloat(bid).toFixed(3) + " Morbucks Trading Platform BETA01.";
+                    for (const index in price_data.slice(-5, price_data.lenght)) {
+                      $("#buy_side").append(price_data[index][0]+" : "+price_data[index][1]+"</br>"); 
+                    }
+
+                    break;
+          
+                  default:
+                    break;
+                }
+
+                break;
+              default:
+                break;
+            }
+          
+            //console.log(wsEvent.event);
+          
+          };
+
+        }
+        liquid_websocket();
+
+        (function (){
+          liquidteam = function (bullet, side) {
+            var status = document.getElementById("status_"+bullet).innerText;
+            var sold = parseFloat(document.getElementById("sell_price_"+bullet).innerText);
+            var bought = parseFloat(document.getElementById("buy_price_"+bullet).innerText);
+            if (sold == "") sold = 0.0;
+
+            switch (side) {
+              case "sell":
+                if (bid < bought) {
+                  document.getElementById("msg").innerHTML = "Bid is less than Bought price.";
+                  return;
+                }
+                if (status == "Sold") {
+                  document.getElementById("msg").innerHTML = "Bullet is Sold.";
+                  return;
+                }
+                if (bid < sold) {
+                  if (!confirm("Bid is less than Sold price: "+parseFloat(sold-bid).toFixed(2))) {
+                    return;
+                  }                 
+                }
+                break;
+              case "buy":
+              if (status == "Bought") {
+                  document.getElementById("msg").innerHTML = "Bullet is Bought.";
+                  return;
+                }
+                if (offer > sold) {
+                  if (!confirm("Offer is more than Sold price: "+parseFloat(offer-sold).toFixed(2))) {
+                    return;
+                  }                 
+                }
+                break;
+              default:
+                break;
+            }
+
+            document.getElementById("msg").innerHTML = "Waiting";
+            body = JSON.stringify({
+                bullet: bullet,
+                side: side,
+                comment: document.getElementById('comment_'+bullet).value
+            });
+            fetch('/liquidteam_trade', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.message == 'tradesuccess') {
+                document.getElementById("msg").innerHTML = "Completed";
+                switch (data.data.side) {
+                  case "sell":
+                    document.getElementById("status_"+bullet).innerHTML = "Sold";
+                    document.getElementById("sell_button_"+bullet).disabled = true;                   
+                    document.getElementById("buy_button_"+bullet).disabled = false;
+                    document.getElementById("sell_price_"+bullet).innerHTML = data.data.price;
+
+                    break;
+                  case "buy":
+                    document.getElementById("status_"+bullet).innerHTML = "Bought";
+                    document.getElementById("sell_button_"+bullet).disabled = false;                   
+                    document.getElementById("buy_button_"+bullet).disabled = true;
+                    document.getElementById("buy_price_"+bullet).innerHTML = data.data.price;
+                    break;
+                  default:
+                    break;
+                }
+
+                if (data.cf) {
+                  document.getElementById("cf").innerHTML = data.cf;
+                }
+
+                $("#bullets_table").trigger('update');
+
+              }else{
+                console.log(data.message);
+                document.getElementById("msg").innerHTML = data.message;
+
+              }
+              ;
+            })
+            .catch((error) => {
+              console.log("Error");
+              document.getElementById("msg").innerHTML = "Connection error please reload page.";
+              //console.error('Error:', error);
+            });
+          }
+        }());
+
+        $(document).ready(function() {
+
+          var x = document.getElementsByName("status_td");
+
+          for (var i = 0; i < x.length; i++) {
+            var bullet = document.getElementsByName("status_td")[i].id.replace("status_", "");
+            switch (document.getElementsByName("status_td")[i].innerText) {
+              case "Sold":
+                document.getElementById("sell_button_"+bullet).disabled = true;
+                break;
+              case "Bought":
+                document.getElementById("buy_button_"+bullet).disabled = true;
+                break;
+
+              default:
+                break;
+            }
+          }
+
+          setInterval(function(){ 
+            fetch('/__csrf', {
+              method: "POST",
+              headers: headers,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              headers= {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-CSRFToken": data.csrf
+              }
+              console.log(new Date());
+              console.log("Update CSRF Token.");
+              console.log(data.csrf);
+            })
+            .catch((error) => {
+              console.log(new Date());
+              console.log("Update CSRF Error.")
+            });
+          }, 1800000);
+
+        });
+
+        $(function() {
+          $.tablesorter.addParser({
+            id: 'value',
+            is: function(s, table, cell, $cell) {
+              return false;
+            },
+            format: function(s, table, cell, cellIndex) {
+              if (cellIndex === 4) {
+                return $(cell).children().val();
+              }
+              return s;
+            },
+            parsed: false,
+            type: 'text'
+          });
+          $("#bullets_table thead th:eq(7), th:eq(8)").data("sorter", false);
+          $('#bullets_table').tablesorter({
+            emptyTo: 'bottom',
+            theme : 'bootstrap',
+            headers: {
+              4 : { sorter: 'value' }
+            },
+          });
+        });
+
+      </script>
+      <div class = "main">
+        <div class = "msg">
+          Message: LiquidTeam
+        {% if trd_data['ident'] == 4 %}
+          Trader
+        {% else %}
+          {{ trd_data['ident'] }}
+        {% endif %}
+          <div id = "msg">
+            Wellcome to Morbucks Trading Club Platform BETA 01.
+          </div>
+        </div>
+        <div class = "info">
+          Cash flow: <span id = "cf">{{ trd_data['cashflow'] }}</span> JPY
+        </div>
+        <div id = "price_alert" class = "price_alert">
+          Price alert:
+          <input type="checkbox" id="alert_val" autocomplete="off" /> Sound<br/>
+          <span id = "span_over">Over: </span><input type="text" id="val_over"  name = "number"/><br/>
+          <span id = "span_under">Under: </span><input type="text" id="val_under"  name = "number"/>
+        </div>
+        <div class = "book">
+          XRPJPY <span id = "time_update"></span></br>
+          Offer
+          <div id = "sell_side" class = "sellside"></div>
+          Bid
+          <div id = "buy_side" class = "buyside"></div>
+        </div>
+      </div>
+      {% if trd_data['ident'] > 5 %}
+      <script>
+        (function() {
+          add_member = function() {
+            document.getElementById('msg_add_member').innerHTML = 'Waiting';
+            body = JSON.stringify({
+              ident: parseInt(document.getElementById('ident').value),
+              email: document.getElementById('member_email_add').value,
+              bullet: parseInt(document.getElementById('bullets_assign').value),
+              trade: 'liquidteam'
+            });
+            fetch('/add_member', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              switch (data.message) {
+                case 'success':
+                  document.getElementById('msg_add_member').innerHTML = 'Success';
+                  break;
+                case 'error':
+                  document.getElementById('msg_add_member').innerHTML = 'Error';
+                  break;
+                case 'exist':
+                  document.getElementById('msg_add_member').innerHTML = 'Exist';
+                  break;
+                default:
+                  break;
+              }
+
+
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+            });
+          }
+
+          transaction = function () {
+            document.getElementById('msg_transaction').innerHTML = 'Waiting';
+            body = JSON.stringify({
+              _id: document.getElementById('_id').value,
+            });
+            fetch('/liquidteam_trans', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              console.log(data);
+              document.getElementById('msg_transaction').innerHTML = data.message;
+
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+            });
+
+          }
+
+
+
+        }());
+
+      </script>
+      <div class = "main">
+        <div class = "admin">
+          Admin<br/>
+          Add member<br/>
+          Email<input type = "text" id = "member_email_add"/><br/>
+          Ident<input type = "text" id = "ident"/><br/>
+          Number of bullet<input type = "text" id = "bullets_assign"/>
+          <button onclick = "add_member();">Add</button><span id = "msg_add_member"></span>
+          <hr/>
+          Transaction<br/>
+          ID<input type = "text" id = "_id"/>
+          <button onclick = "transaction();">Get</button><span id = "msg_transaction"></span>
+        </div>
+      {% endif %}
+        <div class = "bullets">
+          <table class = "table_bullets" id = "bullets_table">
+            <thead>
+              <tr>
+                <th>
+                  Bullet
+                </th>
+                <th>
+                  Sold price
+                </th>
+                <th>
+                  Bought price
+                </th>
+                <th>
+                  Status
+                </th>
+                <th>
+                  Comment
+                </th>
+                <th>
+                  Sell
+                </th>
+                <th>
+                  Buy
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+          {% for key, value in trading.items() %}
+              <tr>
+                <td>
+                  {{ key }}
+                </td>
+                <td id = "sell_price_{{ key }}">
+                  {%- if 'sell' in value and 'price' in value['sell'] -%}
+                  {{ value['sell']['price'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "buy_price_{{ key }}">
+                  {%- if 'buy' in value and 'price' in value['buy'] -%}
+                  {{ value['buy']['price'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "status_{{ key }}" name = "status_td">
+                  {%- if 'status' in value -%}
+                  {{ value['status'] }}
+                  {%- endif -%}
+                </td>
+                <td width = "20px">
+                  <input type = "text" class = "comment_input" id = "comment_{{ key }}" value = "
+                  {%- if 'comment' in value -%}
+                  {{ value['comment'] }}
+                  {%- endif -%}  
+                  " autocomplete="off"/>
+                </td>
+                <td width = "20px">
+                  <button id = "sell_button_{{ key }}" onclick = "liquidteam('{{ key }}', 'sell');">Sell</button>
+                </td>
+                <td width = "20px">
+                  <button id = "buy_button_{{ key }}" onclick = "liquidteam('{{ key }}', 'buy');">Buy</button>
+                </td>   
+              </tr>
+          {% endfor %}    
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class = "main">
+
+    <div class = "chat">
+      Chat: <span>{{dinamic}}</span>
+      <div class = "chat_box" id = "chat_messages"></div>
+      <input type = "hidden" id = "poking"/>
+      <input type = "text" id = "messageInput" placeholder="Type a message..."/>
+      <input type = "checkbox" id = "chat_sound" autocomplete="off" />Sound
+    </div>
+    <div class = "members_on">Online members:
+      <div id = "member_on"></div>
+    </div>
+  </div>
+    {% endif %}
+    <!-- Dinamic page liquidteam -->
+    <!-- Dinamic page clubfeedxrp_hand -->
+    {% if dinamic == 'ClubFeedXRP_hand' %}
+    <div>
+      <script>
+        var bid, offer;
+
+
+
+        function books_update(side, price_data, rat, amo) {
+
+
+          var t_ = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+          $("#time_update").html(t_)
+
+          switch (side) {
+            case "bid":
+
+              $("#buy_side").html("");
+              bid = price_data[0][rat];
+              window.document.title = "฿" + parseFloat(bid).toFixed(2) + " Morbucks Trading Platform BETA01.";
+              for (const index in price_data) {
+                $("#buy_side").append(price_data[index][rat]+" : "+price_data[index][amo]+"</br>"); 
+              }
+
+              break;
+            case "offer":
+
+              $("#sell_side").html("");
+              offer = price_data[0][rat];
+              for (const index in price_data) {
+                $("#sell_side").prepend(price_data[index][rat]+" : "+price_data[index][amo]+"</br>"); 
+              }
+
+              break;
+          
+            default:
+              break;
+          }
+
+
+          
+        }
+
+
+        function clubfeedxrp_websocket() {
+              
+
+
+          fetch("/bitkub_books", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({
+                query: "?sym=thb_xrp&lmt=5"
+            })
+          })
+          .then((response) => response.json())
+          .then((data) => {
+
+            books_update("bid", data.result.bids, 3, 4);
+            books_update("offer", data.result.asks, 3, 4);
+
+            var socket = new WebSocket("wss://api.bitkub.com/websocket-api/10");
+            
+            socket.onerror = function (event) {
+              console.log(new Date());
+              console.log("WS Error.");
+              setTimeout(function() {
+                clubfeedxrp_websocket();
+              }, 1000);
+            };
+
+            socket.onclose = function (event) {
+              console.log(new Date());
+              console.log("WS Closed.");
+              setTimeout(function() {
+                clubfeedxrp_websocket();
+              }, 1000);
+            };
+
+            socket.onopen = function (event) {
+              console.log(new Date());
+              console.log("WS Connected.");
+              //socket.send(JSON.stringify({"auth": data.result}));
+              //socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_buy"}}));
+              //socket.send("Here's some text that the server is urgently awaiting!"); 
+            };
+            socket.onmessage = function (event) {
+
+              try {
+                const wsdata = JSON.parse(event.data);
+                if (wsdata.event == "bidschanged" || wsdata.event == "askschanged" || wsdata.event == "tradeschanged") {
+
+                  switch (wsdata.event) {
+
+                    case "bidschanged":
+                      books_update("bid", wsdata.data.slice(0, 5), 1, 2)
+                      break;
+
+                    case "askschanged":
+                      books_update("offer", wsdata.data.slice(0, 5), 1, 2)
+                      break;
+
+                    case "tradeschanged":
+                      books_update("bid", wsdata.data[1].slice(0, 5), 1, 2)
+                      books_update("offer", wsdata.data[2].slice(0, 5), 1, 2)
+                      break;
+                  
+                    default:
+                      break;
+                  }
+                
+
+                }                
+              
+              
+              }
+              catch(err) {
+                //const wsdata = JSON.parse(event.data);
+                //console.log(event.data);
+              }
+
+            };
+
+
+          })
+          .catch((error) => {
+            console.log("Error");
+            document.getElementById("msg").innerHTML = "Connection error please reload page.";
+            //console.error('Error:', error);
+          });
+
+        }
+        clubfeedxrp_websocket();
+
+        (function (){
+          clubfeedxrp_hand = function (bullet, side) {
+            var status = document.getElementById("status_"+bullet).innerText;
+            var sold = parseFloat(document.getElementById("sell_price_"+bullet).innerText);
+            var bought = parseFloat(document.getElementById("buy_price_"+bullet).innerText);
+            if (sold == "") sold = 0.0;
+
+            switch (side) {
+              case "sell":
+                if (bid < bought) {
+                  document.getElementById("msg").innerHTML = "Bid is less than Bought price.";
+                  return;
+                }
+                if (status == "Sold") {
+                  document.getElementById("msg").innerHTML = "Bullet is Sold.";
+                  return;
+                }
+                if (bid < sold) {
+                  if (!confirm("Bid is less than Sold price: "+parseFloat(sold-bid).toFixed(2))) {
+                    return;
+                  }                 
+                }
+                break;
+              case "buy":
+              if (status == "Bought") {
+                  document.getElementById("msg").innerHTML = "Bullet is Bought.";
+                  return;
+                }
+                if (offer > sold) {
+                  if (!confirm("Offer is more than Sold price: "+parseFloat(offer-sold).toFixed(2))) {
+                    return;
+                  }                 
+                }
+                break;
+              default:
+                break;
+            }
+
+            document.getElementById("msg").innerHTML = "Waiting";
+            body = JSON.stringify({
+                bullet: bullet,
+                side: side,
+                comment: document.getElementById('comment_'+bullet).value
+            });
+            fetch('/clubfeedxrp_hand_trade', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.message == 'tradesuccess') {
+                document.getElementById("msg").innerHTML = "Completed";
+                switch (data.side) {
+                  case "sell":
+                    status = "Sold";
+                    document.getElementById("sell_button_"+bullet).disabled = true;                   
+                    document.getElementById("buy_button_"+bullet).disabled = false;
+
+                    break;
+                  case "buy":
+                    status = "Bought";
+                    document.getElementById("sell_button_"+bullet).disabled = false;                   
+                    document.getElementById("buy_button_"+bullet).disabled = true; 
+                    break;
+                  default:
+                    break;
+                }
+                
+                document.getElementById("status_"+bullet).innerHTML = status;
+                document.getElementById(data.side+"_price_"+bullet).innerHTML = data.data.result.rat;
+
+                if (data.cf) {
+                  document.getElementById("cf").innerHTML = data.cf;
+                }
+
+                $("#bullets_table").trigger('update');
+
+              }else{
+                console.log(data.message);
+                document.getElementById("msg").innerHTML = data.message;
+
+              }
+              ;
+            })
+            .catch((error) => {
+              console.log("Error");
+              document.getElementById("msg").innerHTML = "Connection error please reload page.";
+              //console.error('Error:', error);
+            });
+          }
+        }());
+
+        $(document).ready(function() {
+
+          var x = document.getElementsByName("status_td");
+
+          for (var i = 0; i < x.length; i++) {
+            var bullet = document.getElementsByName("status_td")[i].id.replace("status_", "");
+            switch (document.getElementsByName("status_td")[i].innerText) {
+              case "Sold":
+                document.getElementById("sell_button_"+bullet).disabled = true;
+                break;
+              case "Bought":
+                document.getElementById("buy_button_"+bullet).disabled = true;
+                break;
+
+              default:
+                break;
+            }
+          }
+
+          setInterval(function(){ 
+            fetch('/__csrf', {
+              method: "POST",
+              headers: headers,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              headers= {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-CSRFToken": data.csrf
+              }
+              console.log(new Date());
+              console.log("Update CSRF Token.");
+              console.log(data.csrf);
+            })
+            .catch((error) => {
+              console.log(new Date());
+              console.log("Update CSRF Error.")
+            });
+          }, 1800000);
+
+        });
+
+        $(function() {
+          $.tablesorter.addParser({
+            id: 'value',
+            is: function(s, table, cell, $cell) {
+              return false;
+            },
+            format: function(s, table, cell, cellIndex) {
+              if (cellIndex === 5 || cellIndex === 6) {
+                return $(cell).children().val();
+              }
+              return s;
+            },
+            parsed: false,
+            type: 'text'
+          });
+          $("#bullets_table thead th:eq(7), th:eq(8)").data("sorter", false);
+          $('#bullets_table').tablesorter({
+            emptyTo: 'bottom',
+            theme : 'bootstrap',
+            headers: {
+              5 : { sorter: 'value' },
+              6 : { sorter: 'value' }
+            },
+          });
+        });
+
+      </script>
+      <div class = "main">
+        <div class = "msg">
+          Message: {{dinamic}}
+        {% if trd_data['ident'] == 4 %}
+          Trader
+        {% else %}
+          {{ trd_data['ident'] }}
+        {% endif %}
+          <div id = "msg">
+            Wellcome to Morbucks Trading Club Platform BETA 01.
+          </div>
+        </div>
+        <div class = "info">
+          Cash flow: <span id = "cf">{{ trd_data['cashflow'] }}</span> THB
+        </div>
+        <div id = "price_alert" class = "price_alert">
+          Price alert:
+          <input type="checkbox" id="alert_val" autocomplete="off" /> Sound<br/>
+          <span id = "span_over">Over: </span><input type="text" id="val_over"  name = "number"/><br/>
+          <span id = "span_under">Under: </span><input type="text" id="val_under"  name = "number"/>
+        </div>
+        <div class = "book">
+          THB_XRP <span id = "time_update"></span></br>
+          Offer
+          <div id = "sell_side" class = "sellside"></div>
+          Bid
+          <div id = "buy_side" class = "buyside"></div>
+        </div>
+      </div>
+      {% if trd_data['ident'] > 5 %}
+      <script>
+        (function() {
+          add_member = function() {
+            document.getElementById('msg_add_member').innerHTML = 'Waiting';
+            body = JSON.stringify({
+              ident: parseInt(document.getElementById('ident').value),
+              email: document.getElementById('member_email_add').value,
+              bullet: parseInt(document.getElementById('bullets_assign').value),
+              amount: parseInt(document.getElementById('bullets_amount').value),
+              cashflow: parseInt(document.getElementById('cashflow_assign').value),
+              price: parseFloat(document.getElementById('bullets_price').value),
+              trade: 'ClubFeedXRP_hand'
+            });
+            fetch('/add_member', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              switch (data.message) {
+                case 'success':
+                  document.getElementById('msg_add_member').innerHTML = 'Success';
+                  break;
+                case 'error':
+                  document.getElementById('msg_add_member').innerHTML = 'Error';
+                  break;
+                case 'exist':
+                  document.getElementById('msg_add_member').innerHTML = 'Exist';
+                  break;
+                default:
+                  document.getElementById('msg_add_member').innerHTML = data.message;
+                  break;
+              }
+
+
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+            });
+          }
+
+          transaction = function () {
+            document.getElementById('msg_transaction').innerHTML = 'Waiting';
+            body = JSON.stringify({
+              _id: document.getElementById('_id').value,
+            });
+            fetch('/liquidteam_trans', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+
+              document.getElementById('msg_transaction').innerHTML = data.message;
+
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+            });
+
+          }
+
+
+
+        }());
+
+      </script>
+      <div class = "main">
+        <div class = "admin">
+          Admin<br/>
+          Add member<br/>
+          Email<input type = "text" id = "member_email_add"/><br/>
+          Ident<input type = "text" id = "ident"/><br/>
+          Number of bullet<input type = "text" id = "bullets_assign"/><br/>
+          Bullet amount<input type = "text" id = "bullets_amount"/><br/>
+          Bullets price<input type = "text" id = "bullets_price"/><br/>
+          Cashflow<input type = "text" id = "cashflow_assign"/>
+          <button onclick = "add_member();">Add</button><span id = "msg_add_member"></span>
+          <hr/>
+          Transaction<br/>
+          ID<input type = "text" id = "_id"/>
+          <button onclick = "transaction();">Get</button><span id = "msg_transaction"></span>
+        </div>
+      {% endif %}
+        <div class = "bullets">
+          <table class = "table_bullets" id = "bullets_table">
+            <thead>
+              <tr>
+                <th>
+                  Bullet
+                </th>
+                <th>
+                  Amount
+                </th>
+                <th>
+                  Sold price
+                </th>
+                <th>
+                  Bought price
+                </th>
+                <th>
+                  Status
+                </th>
+                <th>
+                  Comment
+                </th>
+                <th>
+                  Sell
+                </th>
+                <th>
+                  Buy
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+          {% for key, value in trading.items() %}
+              <tr>
+                <td>
+                  {{ key }}
+                </td>
+                <td>
+                  {%- if 'amount' in value -%}
+                  {{ value['amount'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "sell_price_{{ key }}">
+                  {%- if 'sell' in value -%}
+                  {{ value['sell'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "buy_price_{{ key }}">
+                  {%- if 'buy' in value -%}
+                  {{ value['buy'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "status_{{ key }}" name = "status_td">
+                  {%- if 'status' in value -%}
+                  {{ value['status'] }}
+                  {%- endif -%}
+                </td>
+                <td width = "20px">
+                  <input type = "text" class = "comment_input" id = "comment_{{ key }}" value = "
+                  {%- if 'comment' in value -%}
+                  {{ value['comment'] }}
+                  {%- endif -%}
+                  " autocomplete="off"/>
+                </td>
+                <td width = "20px">
+                  <button id = "sell_button_{{ key }}" onclick = "clubfeedxrp_hand('{{ key }}', 'sell');">Sell</button>
+                </td>
+                <td width = "20px">
+                  <button id = "buy_button_{{ key }}" onclick = "clubfeedxrp_hand('{{ key }}', 'buy');">Buy</button>
+                </td>   
+              </tr>
+          {% endfor %}    
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class = "main">
+    <div class = "chat">
+      Chat: <span>{{dinamic}}</span>
+      <div class = "chat_box" id = "chat_messages"></div>
+      <input type = "hidden" id = "poking"/>
+      <input type = "text" id = "messageInput" placeholder="Type a message..."/>
+      <input type = "checkbox" id = "chat_sound" autocomplete="off" />Sound
+    </div>
+    <div class = "members_on">Online members:
+      <div id = "member_on"></div>
+    </div>
+  </div>
+    {% endif %}
+    <!-- Dinamic page clubfeedxrp_hand -->
+    <!-- Dinamic page clubfeedxrp_bot -->
+    {% if dinamic == 'ClubFeedXRP_bot' %}
+    <div>
+      <script>
+        var bid, offer;
+
+
+
+        function books_update(side, price_data, rat, amo) {
+
+
+          var t_ = new Date().toLocaleTimeString('en-US', { hour12: false });
+
+          $("#time_update").html(t_)
+
+          switch (side) {
+            case "bid":
+
+              $("#buy_side").html("");
+              bid = price_data[0][rat];
+              window.document.title = "฿" + parseFloat(bid).toFixed(2) + " Morbucks Trading Platform BETA01.";
+              for (const index in price_data) {
+                $("#buy_side").append(price_data[index][rat]+" : "+price_data[index][amo]+"</br>"); 
+              }
+
+              break;
+            case "offer":
+
+              $("#sell_side").html("");
+              offer = price_data[0][rat];
+              for (const index in price_data) {
+                $("#sell_side").prepend(price_data[index][rat]+" : "+price_data[index][amo]+"</br>"); 
+              }
+
+              break;
+          
+            default:
+              break;
+          }
+
+
+        }
+
+
+        function clubfeedxrp_websocket() {
+              
+          fetch("/bitkub_books", {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({
+                query: "?sym=thb_xrp&lmt=5"
+            })
+          })
+          .then((response) => response.json())
+          .then((data) => {
+
+            books_update("bid", data.result.bids, 3, 4);
+            books_update("offer", data.result.asks, 3, 4);
+
+            var socket = new WebSocket("wss://api.bitkub.com/websocket-api/10");
+            
+            socket.onerror = function (event) {
+              console.log(new Date());
+              console.log("WS Error.");
+              setTimeout(function() {
+                clubfeedxrp_websocket();
+              }, 1000);
+            };
+
+            socket.onclose = function (event) {
+              console.log(new Date());
+              console.log("WS Closed.");
+              setTimeout(function() {
+                clubfeedxrp_websocket();
+              }, 1000);
+            };
+
+            socket.onopen = function (event) {
+              console.log(new Date());
+              console.log("WS Connected.");
+              //socket.send(JSON.stringify({"auth": data.result}));
+              //socket.send(JSON.stringify({"event":"pusher:subscribe","data":{"channel":"price_ladders_cash_xrpjpy_buy"}}));
+              //socket.send("Here's some text that the server is urgently awaiting!"); 
+            };
+            socket.onmessage = function (event) {
+
+              try {
+                const wsdata = JSON.parse(event.data);
+                if (wsdata.event == "bidschanged" || wsdata.event == "askschanged" || wsdata.event == "tradeschanged") {
+
+                  switch (wsdata.event) {
+
+                    case "bidschanged":
+                      books_update("bid", wsdata.data.slice(0, 5), 1, 2)
+                      break;
+
+                    case "askschanged":
+                      books_update("offer", wsdata.data.slice(0, 5), 1, 2)
+                      break;
+
+                    case "tradeschanged":
+                      books_update("bid", wsdata.data[1].slice(0, 5), 1, 2)
+                      books_update("offer", wsdata.data[2].slice(0, 5), 1, 2)
+                      break;
+                  
+                    default:
+                      break;
+                  }
+                
+                
+                
+                
+                }                
+              
+              
+              }
+              catch(err) {
+                //const wsdata = JSON.parse(event.data);
+                //console.log(event.data);
+              }
+
+            };
+
+
+          })
+          .catch((error) => {
+            console.log("Error");
+            document.getElementById("msg").innerHTML = "Connection error please reload page.";
+            //console.error('Error:', error);
+          });
+
+
+
+        }
+        clubfeedxrp_websocket();
+
+        (function (){
+          clubfeedxrp_bot = function (bullet, method) {
+            switch (method) {
+              case 'cancel':
+                
+                body = JSON.stringify({
+                    bullet: bullet,
+                    method: 'cancel'
+                });
+                fetch('/clubfeedxrp_bot_table', {
+                  method: "POST",
+                  headers: headers,
+                  body: body,
+                  credentials: 'same-origin'
+                })
+                .then((response) => response.json())
+                .then((data) => {
+                  if (data.message == 'success') {
+
+                    document.getElementById("sell_"+bullet).value = data.sell_pending;                   
+                    document.getElementById("buy_"+bullet).value = data.buy_pending;
+                    $("#sell_"+bullet).css('background-color','#ff7400');
+                    $("#buy_"+bullet).css('background-color','#ff7400');
+                    document.getElementById("msg").innerHTML = "Canceled.";
+                  }
+                })
+                .catch((error) => {
+                  console.log("Error");
+                  document.getElementById("msg").innerHTML = "Connection error please reload page.";
+                  //console.error('Error:', error);
+                });
+
+                break;
+              case 'save':
+               
+                body = JSON.stringify({
+                    bullet: bullet,
+                    method: 'save',
+                    sell: parseFloat(document.getElementById("sell_"+bullet).value),
+                    buy: parseFloat(document.getElementById("buy_"+bullet).value)
+                });
+                fetch('/clubfeedxrp_bot_table', {
+                  method: "POST",
+                  headers: headers,
+                  body: body,
+                  credentials: 'same-origin'
+                })
+                .then((response) => response.json())
+                .then((data) => {
+                  if (data.message == 'success') {
+
+                    $("#sell_"+bullet).css('background-color','#ff7400');
+                    $("#buy_"+bullet).css('background-color','#ff7400');
+                    document.getElementById("msg").innerHTML = "Saved.";
+                  }
+                })
+                .catch((error) => {
+                  console.log("Error");
+                  document.getElementById("msg").innerHTML = "Connection error please reload page.";
+                  //console.error('Error:', error);
+                });
+
+                break;
+              default:
+                break;
+            }
+          }
+        }());
+
+        $(document).ready(function() {
+
+          setInterval(function(){ 
+            fetch('/__csrf', {
+              method: "POST",
+              headers: headers,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              headers= {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "X-CSRFToken": data.csrf
+              }
+              console.log(new Date());
+              console.log("Update CSRF Token.");
+              console.log(data.csrf);
+            })
+            .catch((error) => {
+              console.log(new Date());
+              console.log("Update CSRF Error.")
+            });
+          }, 1800000);
+
+        });
+
+        $(function() {
+          $.tablesorter.addParser({
+            id: 'value',
+            is: function(s, table, cell, $cell) {
+              return false;
+            },
+            format: function(s, table, cell, cellIndex) {
+              if (cellIndex === 5 || cellIndex === 6) {
+                return $(cell).children().val();
+              }
+              return s;
+            },
+            parsed: false,
+            type: 'text'
+          });
+          $("#bullets_table thead th:eq(7), th:eq(8)").data("sorter", false);
+          $('#bullets_table').tablesorter({
+            emptyTo: 'bottom',
+            theme : 'bootstrap',
+            headers: {
+              5 : { sorter: 'value' },
+              6 : { sorter: 'value' }
+            },
+          });
+        });
+
+      </script>
+      <div class = "main">
+        <div class = "msg">
+          Message: {{dinamic}}
+        {% if trd_data['ident'] == 4 %}
+          Trader
+        {% else %}
+          {{ trd_data['ident'] }}
+        {% endif %}
+          <div id = "msg">
+            Wellcome to Morbucks Trading Club Platform BETA 01.
+          </div>
+        </div>
+        <div class = "info">
+          Cash flow: <span id = "cf">{{ trd_data['cashflow'] }}</span> THB
+        </div>
+        <div id = "price_alert" class = "price_alert">
+          Price alert:
+          <input type="checkbox" id="alert_val" autocomplete="off" /> Sound<br/>
+          <span id = "span_over">Over: </span><input type="text" id="val_over"  name = "number"/><br/>
+          <span id = "span_under">Under: </span><input type="text" id="val_under"  name = "number"/>
+        </div>
+        <div class = "book">
+          THB_XRP <span id = "time_update"></span></br>
+          Offer
+          <div id = "sell_side" class = "sellside"></div>
+          Bid
+          <div id = "buy_side" class = "buyside"></div>
+        </div>
+      </div>
+      {% if trd_data['ident'] > 5 %}
+      <script>
+        (function() {
+          add_member = function() {
+            document.getElementById('msg_add_member').innerHTML = 'Waiting';
+            body = JSON.stringify({
+              ident: parseInt(document.getElementById('ident').value),
+              email: document.getElementById('member_email_add').value,
+              bullet: parseInt(document.getElementById('bullets_assign').value),
+              amount: parseInt(document.getElementById('bullets_amount').value),
+              cashflow: parseInt(document.getElementById('cashflow_assign').value),
+              price: parseFloat(document.getElementById('bullets_price').value),
+              trade: 'ClubFeedXRP_bot'
+            });
+            fetch('/add_member', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+              switch (data.message) {
+                case 'success':
+                  document.getElementById('msg_add_member').innerHTML = 'Success';
+                  break;
+                case 'error':
+                  document.getElementById('msg_add_member').innerHTML = 'Error';
+                  break;
+                case 'exist':
+                  document.getElementById('msg_add_member').innerHTML = 'Exist';
+                  break;
+                default:
+                  document.getElementById('msg_add_member').innerHTML = data.message;
+                  break;
+              }
+
+
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+            });
+          }
+
+          transaction = function () {
+            document.getElementById('msg_transaction').innerHTML = 'Waiting';
+            body = JSON.stringify({
+              _id: document.getElementById('_id').value,
+            });
+            fetch('/liquidteam_trans', {
+              method: "POST",
+              headers: headers,
+              body: body,
+              credentials: 'same-origin'
+            })
+            .then((response) => response.json())
+            .then((data) => {
+
+              document.getElementById('msg_transaction').innerHTML = data.message;
+
+            })
+            .catch((error) => {
+              console.error('Error:', error);
+            });
+
+          }
+
+
+
+        }());
+
+      </script>
+      <div class = "main">
+        <div class = "admin">
+          Admin<br/>
+          Add member<br/>
+          Email<input type = "text" id = "member_email_add"/><br/>
+          Ident<input type = "text" id = "ident"/><br/>
+          Number of bullet<input type = "text" id = "bullets_assign"/><br/>
+          Bullet amount<input type = "text" id = "bullets_amount"/><br/>
+          Bullets price<input type = "text" id = "bullets_price"/><br/>
+          Cashflow<input type = "text" id = "cashflow_assign"/>
+          <button onclick = "add_member();">Add</button><span id = "msg_add_member"></span>
+          <hr/>
+          Transaction<br/>
+          ID<input type = "text" id = "_id"/>
+          <button onclick = "transaction();">Get</button><span id = "msg_transaction"></span>
+        </div>
+      {% endif %}
+        <div class = "bullets">
+          <table class = "table_bullets" id = "bullets_table">
+            <thead>
+              <tr>
+                <th>
+                  Bullet
+                </th>
+                <th>
+                  Amount
+                </th>
+                <th>
+                  Sold price
+                </th>
+                <th>
+                  Bought price
+                </th>
+                <th>
+                  Status
+                </th>
+                <th>
+                  Sell pending
+                </th>
+                <th>
+                  Buy pending
+                </th>
+                <th>
+                  Cancel
+                </th>
+                <th>
+                  Save
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+          {% for key, value in trading.items() %}
+              <tr>
+                <td>
+                  {{ key }}
+                </td>
+                <td>
+                  {%- if 'amount' in value -%}
+                  {{ value['amount'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "sell_price_{{ key }}">
+                  {%- if 'sell' in value -%}
+                  {{ value['sell'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "buy_price_{{ key }}">
+                  {%- if 'buy' in value -%}
+                  {{ value['buy'] }}
+                  {%- endif -%}
+                </td>
+                <td id = "status_{{ key }}" name = "status_td">
+                  {%- if 'status' in value -%}
+                  {{ value['status'] }}
+                  {%- endif -%}
+                </td>
+                <td width = "20px" class = "bot">
+                  <input type = "text" name = "pending" id = "sell_{{ key }}" value = "
+                  {%- if 'sell_pending' in value -%}
+                  {{ value['sell_pending'] }}
+                  {%- endif -%}  
+                  " autocomplete="off"/>
+                </td>
+                <td width = "20px" class = "bot">
+                  <input type = "text" name = "pending" id = "buy_{{ key }}" value = "
+                  {%- if 'buy_pending' in value -%}
+                  {{ value['buy_pending'] }}
+                  {%- endif -%}  
+                  " autocomplete="off"/>
+                </td>
+                <td width = "20px">
+                  <button onclick = "clubfeedxrp_bot('{{ key }}', 'cancel');">Cancel</button>
+                </td>  
+                <td width = "20px">
+                  <button onclick = "clubfeedxrp_bot('{{ key }}', 'save');">Save</button>
+                </td>  
+              </tr>
+          {% endfor %}    
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class = "main">
+    <div class = "chat">
+      Chat: <span>{{dinamic}}</span>
+      <div class = "chat_box" id = "chat_messages"></div>
+      <input type = "hidden" id = "poking"/>
+      <input type = "text" id = "messageInput" placeholder="Type a message..."/>
+      <input type = "checkbox" id = "chat_sound" autocomplete="off" />Sound
+    </div>
+    <div class = "members_on">Online members:
+      <div id = "member_on"></div>
+    </div>
+  </div>
+      {% endif %}
+      <!-- Dinamic page clubfeedxrp_bot -->  
+</body>
+</html>

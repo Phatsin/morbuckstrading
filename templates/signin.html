@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-auth.js"></script>
+  <script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+  <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+  <script src="https://www.gstatic.com/firebasejs/7.14.1/firebase-analytics.js"></script>
+  <script type="text/javascript" src="/js/firebaseconfig.js"></script>
+  <script type = "text/javascript">
+    var headers= {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token() }}"
+      }
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
+    var ui = new firebaseui.auth.AuthUI(firebase.auth());
+    var data = null;
+    var anonymousUser = firebase.auth().currentUser;
+    ui.start('#firebaseui-auth-container', {
+        autoUpgradeAnonymousUsers: true,
+        signInOptions: [
+            firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+            //firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+            firebase.auth.EmailAuthProvider.PROVIDER_ID,
+            //firebase.auth.PhoneAuthProvider.PROVIDER_ID
+        ],
+        callbacks: {
+            signInFailure: function(error) {
+            if (error.code != 'firebaseui/anonymous-upgrade-merge-conflict') {
+                return Promise.resolve();
+            }
+            var cred = error.credential;
+            return firebase.auth().signInWithCredential(cred);
+            },
+            signInSuccess: function(currentUser, credential, redirectUrl) {
+
+              firebase.auth().currentUser.getIdToken(/* forceRefresh */ true).then(function(idToken) {
+                fetch('/csrf', {
+                      method: "POST",
+                      headers: headers,
+                      body: JSON.stringify({idToken}),
+                      credentials: 'same-origin'
+                    })
+                    .then((response) => response.json())
+                    .then((data) => {
+                      window.location.href = "/"; 
+                    })
+                    .catch((error) => {
+                      console.log('Error');
+                    });
+
+              }).catch(function(error) {
+                  // Handle error
+              });
+            return false; // No redirect.
+          }
+        }
+    });
+
+  </script>
+</head>
+<body>
+  {{ title }}
+  <div id="firebaseui-auth-container"></div>
+</body>
+</html>
